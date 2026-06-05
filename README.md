@@ -446,52 +446,6 @@ for session in sessions:
 
 ---
 
-## 📝 Chuẩn Bị Báo Cáo
-
-### Cấu Trúc Báo Cáo:
-
-1. **Giới Thiệu (2-3 trang)**
-   - Lịch sử DH
-   - Tầm quan trọng
-   - Mục tiêu dự án
-
-2. **Lý Thuyết (4-5 trang)**
-   - Modular Arithmetic
-   - Nguyên lý DH
-   - Độ phức tạp
-
-3. **Thiết Kế & Triển Khai (4-5 trang)**
-   - Kiến trúc
-   - Sơ đồ lớp
-   - Code mẫu
-
-4. **Kiểm Thử (2-3 trang)**
-   - Test cases
-   - Kết quả
-   - Hiệu suất
-
-5. **Bảo Mật (3-4 trang)**
-   - Lỗ hổng
-   - Phòng chống
-   - Phân tích MITM
-
-6. **Kết Luận (1-2 trang)**
-   - Tóm tắt
-   - Hạn chế
-   - Hướng phát triển
-
-### Hình ảnh & Biểu đồ cần có:
-
-```
-□ Sơ đồ nguyên lý DH
-□ Sơ đồ kiến trúc (Alice-Bob-Eve)
-□ Biểu đồ độ phức tạp thời gian
-□ Bảng so sánh (bit_length vs time)
-□ Sơ đồ tấn công MITM
-□ Code snippet quan trọng
-```
-
----
 
 ## 🎯 Ý Tưởng Mở Rộng
 
@@ -614,25 +568,4 @@ def validate_dh_params(p, g):
     # Có thể check thêm: g là primitive root
 ```
 
----
 
-## 📞 Hỗ Trợ & Liên Hệ
-
-Nếu gặp vấn đề:
-
-1. **Check lại code**: So với file mẫu
-2. **Đọc error message**: Thường nó chỉ rõ vấn đề
-3. **Google**: "Diffie-Hellman [lỗi]"
-4. **Hỏi thầy/cô**: Cung cấp code + error trace
-
----
-
-## 📄 License
-
-Code này được cung cấp cho mục đích **giáo dục**. Tự do sử dụng, sửa đổi, nhưng không tính lợi nhuận.
-
----
-
-**Cập nhật lần cuối: 2026-06-04**
-
-Chúc bạn hoàn thành dự án thành công! 🎓🔐
