@@ -1,0 +1,7 @@
+{
+  "server_host": "127.0.0.1",
+  "server_port": 5001,
+  "bind_host": "0.0.0.0",
+  "timeout": 60.0,
+  "bit_length": 256
+}
