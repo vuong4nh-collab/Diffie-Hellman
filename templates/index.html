@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DH Chat - Diffie-Hellman Key Exchange Demo</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;700&family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <!-- SocketIO Client Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.2/socket.io.min.js"></script>
+</head>
+<body>
+    <div class="app-container">
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="header-logo">
+                <i class="fa-solid fa-shield-halved security-shield-icon"></i>
+                <h1>DH Chat</h1>
+            </div>
+            
+            <div class="header-controls">
+                <!-- Mode selection -->
+                <div class="control-group mode-toggle-group">
+                    <label for="modeSelect">Chế độ:</label>
+                    <select id="modeSelect">
+                        <option value="simulation" selected>(Khuyên dùng) Mô phỏng Tại chỗ (1 Màn hình)</option>
+                        <option value="relay">Kết nối Mạng (Nhiều Tab)</option>
+                    </select>
+                </div>
+                
+                <!-- Role selection for Relay Mode (hidden in Sim Mode) -->
+                <div id="roleSelectGroup" class="control-group hidden">
+                    <label for="roleSelect">Vai trò:</label>
+                    <select id="roleSelect">
+                        <option value="alice">Alice (Người gửi)</option>
+                        <option value="bob">Bob (Người nhận)</option>
+                    </select>
+                </div>
+
+                <!-- Connection status indicator -->
+                <div class="status-indicator disconnected" id="connectionStatus">
+                    <span class="status-dot"></span>
+                    <span class="status-text">CHƯA KẾT NỐI</span>
+                </div>
+                
+                <button id="connectBtn" class="btn btn-connect">Kết nối</button>
+                <button id="resetBtn" class="btn btn-reset">Reset Session</button>
+            </div>
+        </header>
+
+        <!-- MAIN LAYOUT -->
+        <main class="app-main">
+            <!-- LEFT COLUMN: CRYPTO PARAMETERS -->
+            <section class="column sidebar-left">
+                <div class="section-header">
+                    <i class="fa-solid fa-key icon-title"></i>
+                    <h2>CRYPTO PARAMETERS</h2>
+                    <span class="subtitle">Diffie-Hellman Exchange</span>
+                </div>
+
+                <div class="params-container">
+                    <div class="param-box" id="box-p">
+                        <div class="param-label">
+                            <span>p (Prime)</span>
+                            <span class="param-status-icon"></span>
+                        </div>
+                        <textarea id="param-p-val" readonly placeholder="Đang tạo số nguyên tố p..."></textarea>
+                    </div>
+
+                    <div class="param-box" id="box-g">
+                        <div class="param-label">
+                            <span>g (Generator)</span>
+                            <span class="param-status-icon"></span>
+                        </div>
+                        <input type="text" id="param-g-val" readonly placeholder="Căn nguyên thủy g">
+                    </div>
+
+                    <div class="param-box" id="box-A">
+                        <div class="param-label">
+                            <span>A (Alice Public Key)</span>
+                            <span class="param-status-icon"></span>
+                        </div>
+                        <textarea id="param-A-val" readonly placeholder="A = g^a mod p"></textarea>
+                    </div>
+
+                    <div class="param-box" id="box-B">
+                        <div class="param-label">
+                            <span>B (Bob Public Key)</span>
+                            <span class="param-status-icon"></span>
+                        </div>
+                        <textarea id="param-B-val" readonly placeholder="B = g^b mod p"></textarea>
+                    </div>
+
+                    <div class="param-box" id="box-K">
+                        <div class="param-label">
+                            <span>K_aes (Shared Secret Key)</span>
+                            <span class="param-status-icon"></span>
+                        </div>
+                        <textarea id="param-K-val" class="encrypted-font" readonly placeholder="K = B^a = A^b mod p"></textarea>
+                    </div>
+                </div>
+
+                <!-- SYSTEM LOGS / AUDIT LOG -->
+                <div class="system-logs-section">
+                    <div class="section-header logs-header">
+                        <i class="fa-solid fa-list-check icon-title"></i>
+                        <h2>SYSTEM LOGS</h2>
+                    </div>
+                    <div class="logs-container" id="logsContainer">
+                        <!-- Logs appended here dynamically -->
+                    </div>
+                    <button class="btn btn-block" id="viewAuditLogBtn">Xem Nhật Ký Hệ Thống</button>
+                </div>
+            </section>
+
+            <!-- CENTER COLUMN: SECURE CHANNEL -->
+            <section class="column channel-center">
+                <!-- Connected Channel Header -->
+                <div class="channel-header" id="channelHeader">
+                    <div class="channel-title">
+                        <i class="fa-solid fa-lock text-success" id="channelLockIcon"></i>
+                        <span id="channelHeaderText">Đang thiết lập kết nối bảo mật...</span>
+                    </div>
+                    <div class="channel-algorithm" id="channelHeaderAlgorithm">AES-256-CBC</div>
+                </div>
+
+                <!-- Body wrapper containing both tunnel screen and chat screen -->
+                <div class="channel-body-wrapper">
+                    <!-- Handsake visualizer (Tunnel Screen) -->
+                    <div class="tunnel-screen" id="tunnelScreen">
+                        <div class="tunnel-visual">
+                            <div class="globe-spinner-container">
+                                <svg class="handshake-svg" viewBox="0 0 100 100">
+                                    <circle class="globe-bg" cx="50" cy="50" r="40" />
+                                    <path class="globe-meridians" d="M 50,10 A 40,40 0 0,0 50,90 A 40,40 0 0,0 50,10 Z M 10,50 A 40,40 0 0,0 90,50 A 40,40 0 0,0 10,50 Z" />
+                                    <circle class="globe-pulse" cx="50" cy="50" r="25" />
+                                </svg>
+                                <i class="fa-solid fa-network-wired handshake-center-icon"></i>
+                            </div>
+                        </div>
+                        <h3>ESTABLISHING TUNNEL</h3>
+                        <p>Secure end-to-end channel handshake in progress...</p>
+                        
+                        <!-- Mini simulation control panel (Only visible in Sim Mode) -->
+                        <div class="sim-steps-container" id="simStepsContainer">
+                            <button id="simStep1Btn" class="btn btn-primary">Bước 1: Tạo Params (p, g) và Khóa A</button>
+                            <button id="simStep2Btn" class="btn btn-primary" disabled>Bước 2: Phản hồi Khóa B</button>
+                            <button id="simStep3Btn" class="btn btn-success" disabled>Bước 3: Thiết lập Khóa Chung</button>
+                        </div>
+                    </div>
+
+                    <!-- Chat screen container -->
+                    <div class="chat-screen hidden" id="chatScreen">
+                        <div class="chat-messages" id="chatMessages">
+                            <!-- Message bubbles go here -->
+                        </div>
+                        
+                        <!-- Chat Input bar -->
+                        <div class="chat-input-bar">
+                            <input type="text" id="chatInput" placeholder="Nhập tin nhắn..." disabled>
+                            <button id="sendBtn" class="btn btn-send" disabled>
+                                <i class="fa-solid fa-paper-plane"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer branding -->
+                <footer class="app-footer">
+                    <span>© 2026 DH-SECURE PROTOCOL</span>
+                    <div class="footer-links">
+                        <a href="#" id="docLink">Documentation</a>
+                        <a href="#" id="sourceLink">Source Code</a>
+                    </div>
+                </footer>
+            </section>
+
+            <!-- RIGHT COLUMN: EVE'S VIEW -->
+            <section class="column sidebar-right">
+                <!-- Tabs header -->
+                <div class="tabs-header">
+                    <button class="tab-btn active" id="tabEveBtn">Eve's View</button>
+                    <button class="tab-btn" id="tabDebugBtn">Debug</button>
+                </div>
+
+                <div class="tab-content" id="tabContentEve">
+                    <div class="terminal-header">
+                        <div class="terminal-title">
+                            <span class="pulse-red-dot"></span>
+                            <i class="fa-solid fa-terminal font-small"></i>
+                            <h3>Hacker Terminal</h3>
+                        </div>
+                        <span class="status-tag">Network Interception Active</span>
+                    </div>
+
+                    <!-- Hacker stream -->
+                    <div class="terminal-body" id="hackerTerminal">
+                        <div class="terminal-command"># Eavesdropping on channel eth0...</div>
+                        <div class="terminal-log log-info">[INFO] Waiting for public traffic...</div>
+                        
+                        <div class="packets-list" id="packetsList">
+                            <!-- Packet cards go here -->
+                        </div>
+                    </div>
+
+                    <!-- Traffic Entropy -->
+                    <div class="entropy-section">
+                        <h4>Traffic Entropy</h4>
+                        <div class="chart-container">
+                            <svg class="entropy-svg" id="entropyChart" viewBox="0 0 300 80">
+                                <path class="entropy-line" d="M 0,75 L 30,75 L 60,75 L 90,75 L 120,75 L 150,75 L 180,75 L 210,75 L 240,75 L 270,75 L 300,75" />
+                                <path class="entropy-area" d="M 0,75 L 30,75 L 60,75 L 90,75 L 120,75 L 150,75 L 180,75 L 210,75 L 240,75 L 270,75 L 300,75 L 300,80 L 0,80 Z" />
+                            </svg>
+                        </div>
+                    </div>
+
+                    <!-- Terminal Footer Stats -->
+                    <div class="terminal-footer">
+                        <div class="stat-row">
+                            <span class="stat-label"><i class="fa-solid fa-ethernet"></i> Sniffing interface:</span>
+                            <span class="stat-value text-green">eth0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label"><i class="fa-solid fa-gauge-high"></i> Attempts to decrypt:</span>
+                            <span class="stat-value text-green font-mono" id="decryptAttempts">0</span>
+                        </div>
+                        <div class="stat-row">
+                            <span class="stat-label"><i class="fa-solid fa-chart-pie"></i> Decrypt Success Probability:</span>
+                            <span class="stat-value text-red font-mono" id="decryptProb">&lt; 0.000001%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="tab-content hidden" id="tabContentDebug">
+                    <div class="debug-panel">
+                        <h3>Debug console</h3>
+                        <p>Internal variables dump:</p>
+                        <pre id="debugDump">p = None
+g = None
+A = None
+B = None
+K = None</pre>
+                        <div class="debug-controls">
+                            <button class="btn btn-sm btn-block" id="debugAutoTalkBtn">Auto-generate Chat Message</button>
+                            <button class="btn btn-sm btn-block" id="debugForceKeyBtn">Force Quick Handshake (256-bit)</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- AUDIT LOG MODAL -->
+    <div class="modal-overlay hidden" id="auditLogModal">
+        <div class="modal-box">
+            <div class="modal-header">
+                <h3>Nhật Ký Bảo Mật Hệ Thống (Audit Log)</h3>
+                <button class="close-modal-btn" id="closeModalBtn">&times;</button>
+            </div>
+            <div class="modal-body" id="modalLogsContainer">
+                <!-- Logs duplicated here -->
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Script File -->
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
