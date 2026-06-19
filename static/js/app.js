@@ -57,8 +57,22 @@ document.addEventListener("DOMContentLoaded", () => {
     const debugAutoTalkBtn = document.getElementById("debugAutoTalkBtn");
     const debugForceKeyBtn = document.getElementById("debugForceKeyBtn");
 
+    // Hand-Made mode elements
+    const handmadeContainer = document.getElementById("handmadeContainer");
+    const hmStep1Panel = document.getElementById("hmStep1Panel");
+    const hmStep2Panel = document.getElementById("hmStep2Panel");
+    const hmStep3Panel = document.getElementById("hmStep3Panel");
+    const hmInputQ     = document.getElementById("hmInputQ");
+    const hmInputAlpha = document.getElementById("hmInputAlpha");
+    const hmInputXA    = document.getElementById("hmInputXA");
+    const hmInputXB    = document.getElementById("hmInputXB");
+    const hmStep1Btn   = document.getElementById("hmStep1Btn");
+    const hmStep2Btn   = document.getElementById("hmStep2Btn");
+    const hmStep3Btn   = document.getElementById("hmStep3Btn");
+    const hmFormulaBlock = document.getElementById("hmFormulaBlock");
+
     // === SYSTEM VARIABLES ===
-    let mode = "simulation"; // simulation or relay
+    let mode = "handmade"; // handmade, simulation or relay
     let socket = null;
     let isConnected = false;
     let myRole = "alice"; // alice or bob (for relay mode)
@@ -161,13 +175,15 @@ document.addEventListener("DOMContentLoaded", () => {
     }
 
     function updateDebugDump() {
-        debugDump.innerText = `p = ${state.p ? "0x" + state.p.toString(16) : "None"}
-g = ${state.g ? state.g.toString() : "None"}
-a_private = ${state.a_priv ? "0x" + state.a_priv.toString(16).slice(0, 8) + "..." : "None"}
-b_private = ${state.b_priv ? "0x" + state.b_priv.toString(16).slice(0, 8) + "..." : "None"}
-A_public = ${state.A_pub ? "0x" + state.A_pub.toString(16).slice(0, 8) + "..." : "None"}
-B_public = ${state.B_pub ? "0x" + state.B_pub.toString(16).slice(0, 8) + "..." : "None"}
-Shared Secret = ${state.sharedSecret ? "0x" + state.sharedSecret.toString(16).slice(0, 12) + "..." : "None"}`;
+        const isSmall = state.p && state.p < 100000n;
+        const fmt = (v) => v === null ? "None" : (isSmall ? v.toString() : ("0x" + v.toString(16).slice(0, 16) + "..."));
+        debugDump.innerText = `q         = ${state.p ? state.p.toString() : "None"}
+α         = ${state.g ? state.g.toString() : "None"}
+X_A (priv)= ${state.a_priv ? fmt(state.a_priv) : "None"}
+X_B (priv)= ${state.b_priv ? fmt(state.b_priv) : "None"}
+Y_A (pub) = ${state.A_pub ? fmt(state.A_pub) : "None"}
+Y_B (pub) = ${state.B_pub ? fmt(state.B_pub) : "None"}
+K_A = K_B = ${state.sharedSecret ? fmt(state.sharedSecret) : "None"}`;
     }
 
     // === EVE'S HACKER TERMINAL SIMULATORS ===
@@ -280,14 +296,13 @@ Shared Secret = ${state.sharedSecret ? "0x" + state.sharedSecret.toString(16).sl
         state.p = P_VAL;
         state.g = G_VAL;
         
-        // Set values on left column
         valP.value = formatHex(P_HEX);
         valG.value = G_VAL.toString();
         
         setParamBoxState(boxP, "active");
         setParamBoxState(boxG, "active");
         
-        addLog("DH_PARAMS", "Số nguyên tố p (256-bit) và generator g = 2 được chọn.");
+        addLog("DH_PARAMS", "Số nguyên tố q (256-bit) và primitive root α = 2 được chọn.");
         
         // Generate Alice keys
         state.a_priv = generatePrivateKey();
@@ -296,16 +311,14 @@ Shared Secret = ${state.sharedSecret ? "0x" + state.sharedSecret.toString(16).sl
         valA.value = formatHex(state.A_pub.toString(16));
         setParamBoxState(boxA, "active");
         
-        addLog("PUB_KEY", `Alice tính toán Public Key A = g^a mod p.`);
-        addLog("CONNECTION", "Alice gửi tham số p, g và Khóa A cho Bob...");
+        addLog("PUB_KEY", `Alice tính: Y<sub>A</sub> = α<sup>X<sub>A</sub></sup> mod q.`);
+        addLog("CONNECTION", "Alice gửi tham số q, α và Khóa Y<sub>A</sub> cho Bob...");
         
-        // Intercepted packet for Eve
         state.packetCounter++;
-        addInterceptedPacketUI(state.packetCounter, "Alice", "Bob", "DH_PARAMS", `p = ${P_HEX.slice(0, 16)}... g = 2`, "Insecure Phase");
+        addInterceptedPacketUI(state.packetCounter, "Alice", "Bob", "DH_PARAMS", `q = ${P_HEX.slice(0, 16)}... α = 2`, "Insecure Phase");
         state.packetCounter++;
-        addInterceptedPacketUI(state.packetCounter, "Alice", "Bob", "PUB_KEY_A", `A = ${state.A_pub.toString(16).slice(0, 24)}...`, "Insecure Phase");
+        addInterceptedPacketUI(state.packetCounter, "Alice", "Bob", "PUB_KEY_Y_A", `Y<sub>A</sub> = ${state.A_pub.toString(16).slice(0, 24)}...`, "Insecure Phase");
         
-        // UI states
         simStep1Btn.disabled = true;
         simStep2Btn.disabled = false;
         setParamBoxState(boxB, "waiting");
@@ -316,20 +329,17 @@ Shared Secret = ${state.sharedSecret ? "0x" + state.sharedSecret.toString(16).sl
     function runSimStep2() {
         addLog("SYSTEM", "Bob nhận tham số từ Alice và phản hồi...");
         
-        // Generate Bob keys
         state.b_priv = generatePrivateKey();
         state.B_pub = modPow(state.g, state.b_priv, state.p);
         
         valB.value = formatHex(state.B_pub.toString(16));
         setParamBoxState(boxB, "active");
         
-        addLog("PUB_KEY", `Bob tính toán Public Key B = g^b mod p và gửi lại cho Alice.`);
+        addLog("PUB_KEY", `Bob tính: Y<sub>B</sub> = α<sup>X<sub>B</sub></sup> mod q và gửi lại cho Alice.`);
         
-        // Intercepted packet for Eve
         state.packetCounter++;
-        addInterceptedPacketUI(state.packetCounter, "Bob", "Alice", "PUB_KEY_B", `B = ${state.B_pub.toString(16).slice(0, 24)}...`, "Insecure Phase");
+        addInterceptedPacketUI(state.packetCounter, "Bob", "Alice", "PUB_KEY_Y_B", `Y<sub>B</sub> = ${state.B_pub.toString(16).slice(0, 24)}...`, "Insecure Phase");
         
-        // UI states
         simStep2Btn.disabled = true;
         simStep3Btn.disabled = false;
         setParamBoxState(boxK, "waiting");
@@ -338,25 +348,21 @@ Shared Secret = ${state.sharedSecret ? "0x" + state.sharedSecret.toString(16).sl
     }
 
     function runSimStep3() {
-        addLog("SYSTEM", "Alice và Bob tiến hành tính toán khóa bí mật chung...");
+        addLog("SYSTEM", "Alice và Bob tính toán khóa bí mật chung...");
         
-        // Compute shared secrets
         const K_alice = modPow(state.B_pub, state.a_priv, state.p);
-        const K_bob = modPow(state.A_pub, state.b_priv, state.p);
+        const K_bob   = modPow(state.A_pub, state.b_priv, state.p);
         
         if (K_alice === K_bob) {
             state.sharedSecret = K_alice;
             valK.value = getFingerprint(state.sharedSecret);
             setParamBoxState(boxK, "active");
             
-            addLog("PUB_KEY", `Alice tính: K = B^a mod p. Bob tính: K = A^b mod p.`);
-            addLog("SYSTEM", "Xác nhận: Khóa bí mật chung khớp hoàn toàn!");
+            addLog("PUB_KEY", `Alice tính: K<sub>A</sub> = (Y<sub>B</sub>)<sup>X<sub>A</sub></sup> mod q. Bob tính: K<sub>B</sub> = (Y<sub>A</sub>)<sup>X<sub>B</sub></sup> mod q.`);
+            addLog("SYSTEM", "✅ Xác nhận: K<sub>A</sub> = K<sub>B</sub> — Khóa bí mật chung khớp hoàn toàn!");
             addLog("CONNECTION", "Đường truyền bảo mật AES-256-CBC được thiết lập thành công.");
             
-            // UI States
             simStep3Btn.disabled = true;
-            
-            // Transition screen
             tunnelScreen.classList.add("hidden");
             chatScreen.classList.remove("hidden");
             
@@ -367,25 +373,21 @@ Shared Secret = ${state.sharedSecret ? "0x" + state.sharedSecret.toString(16).sl
             chatInput.disabled = false;
             sendBtn.disabled = false;
             
-            // Change connection status logo
             connectionStatus.classList.remove("disconnected", "connecting");
             connectionStatus.classList.add("connected");
             connectionStatus.querySelector(".status-text").innerText = "CONNECTED";
             
-            // Add automatic system notification in chat
             appendSystemMessage("Session Key established. Channel encrypted with AES-256-CBC.");
-            
             startDecryptSimulator();
             updateDebugDump();
             
-            // Preload chat simulation dialogues
             setTimeout(() => {
                 appendChatBubble("Bob", "Chào Alice, bạn đã nhận được các tham số DH chưa?", "a7f82b4c10ab88e1e813f0190a67e911");
                 state.packetCounter++;
                 addInterceptedPacketUI(state.packetCounter, "Bob", "Alice", "CIPHERTEXT", `PAYLOAD: 0x5846a19231201588... (IV: a7f82b4c...)`, "Encrypted - Key Unknown");
             }, 1000);
         } else {
-            addLog("SYSTEM", "Lỗi: Khóa bí mật chung không khớp!");
+            addLog("SYSTEM", "❌ Lỗi: Khóa bí mật chung không khớp!");
         }
     }
 
@@ -441,7 +443,153 @@ Shared Secret = ${state.sharedSecret ? "0x" + state.sharedSecret.toString(16).sl
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 
+    // === HAND-MADE MODE LOGIC ===
+
+    function runHmStep1() {
+        // Clear previous errors
+        [hmInputQ, hmInputAlpha, hmInputXA].forEach(el => el.classList.remove("error"));
+
+        const qVal    = parseInt(hmInputQ.value, 10);
+        const alphaVal = parseInt(hmInputAlpha.value, 10);
+        const xAVal   = parseInt(hmInputXA.value, 10);
+
+        let valid = true;
+        if (!hmInputQ.value     || isNaN(qVal)    || qVal < 3)           { hmInputQ.classList.add("error");     valid = false; }
+        if (!hmInputAlpha.value || isNaN(alphaVal) || alphaVal < 2)      { hmInputAlpha.classList.add("error"); valid = false; }
+        if (!hmInputXA.value    || isNaN(xAVal)    || xAVal < 2 || xAVal >= qVal) { hmInputXA.classList.add("error"); valid = false; }
+
+        if (!valid) {
+            addLog("SYSTEM", "⚠️ Vui lòng kiểm tra lại giá trị nhập vào (q phải là số nguyên tố, Xₐ phải ≥ 2 và < q).");
+            return;
+        }
+
+        state.p      = BigInt(qVal);
+        state.g      = BigInt(alphaVal);
+        state.a_priv = BigInt(xAVal);
+        state.A_pub  = modPow(state.g, state.a_priv, state.p);
+
+        // Update left sidebar
+        valP.value = qVal.toString();
+        valG.value = alphaVal.toString();
+        valA.value = state.A_pub.toString();
+        setParamBoxState(boxP, "active");
+        setParamBoxState(boxG, "active");
+        setParamBoxState(boxA, "active");
+        setParamBoxState(boxB, "waiting");
+
+        addLog("DH_PARAMS", `Tham số công khai: q = ${qVal}, α = ${alphaVal}`);
+        addLog("PUB_KEY",  `Alice tính: Y<sub>A</sub> = α<sup>X<sub>A</sub></sup> mod q = ${alphaVal}<sup>${xAVal}</sup> mod ${qVal} = ${state.A_pub}`);
+        addLog("CONNECTION", `Alice gửi (q, α, Y<sub>A</sub> = ${state.A_pub}) cho Bob qua kênh công khai.`);
+
+        // Eve intercepts
+        state.packetCounter++;
+        addInterceptedPacketUI(state.packetCounter, "Alice", "Bob", "DH_PARAMS",  `q=${qVal}, α=${alphaVal}`, "Insecure Phase");
+        state.packetCounter++;
+        addInterceptedPacketUI(state.packetCounter, "Alice", "Bob", "PUB_KEY_Y_A", `Y<sub>A</sub> = ${state.A_pub}`, "Insecure Phase");
+
+        // Advance to step 2
+        hmStep1Panel.classList.add("hidden");
+        hmStep2Panel.classList.remove("hidden");
+        updateDebugDump();
+    }
+
+    function runHmStep2() {
+        hmInputXB.classList.remove("error");
+        const xBVal = parseInt(hmInputXB.value, 10);
+        const qVal  = Number(state.p);
+
+        if (!hmInputXB.value || isNaN(xBVal) || xBVal < 2 || xBVal >= qVal) {
+            hmInputXB.classList.add("error");
+            addLog("SYSTEM", `⚠️ Xʙ phải là số nguyên ≥ 2 và < q (= ${qVal}).`);
+            return;
+        }
+
+        state.b_priv = BigInt(xBVal);
+        state.B_pub  = modPow(state.g, state.b_priv, state.p);
+
+        valB.value = state.B_pub.toString();
+        setParamBoxState(boxB, "active");
+        setParamBoxState(boxK, "waiting");
+
+        addLog("PUB_KEY",  `Bob tính: Y<sub>B</sub> = α<sup>X<sub>B</sub></sup> mod q = ${state.g}<sup>${xBVal}</sup> mod ${state.p} = ${state.B_pub}`);
+        addLog("CONNECTION", `Bob gửi Y<sub>B</sub> = ${state.B_pub} cho Alice qua kênh công khai.`);
+
+        // Eve intercepts
+        state.packetCounter++;
+        addInterceptedPacketUI(state.packetCounter, "Bob", "Alice", "PUB_KEY_Y_B", `Y<sub>B</sub> = ${state.B_pub}`, "Insecure Phase");
+
+        // Compute both shared secrets for formula preview
+        const K_A = modPow(state.B_pub, state.a_priv, state.p);
+        const K_B = modPow(state.A_pub, state.b_priv, state.p);
+        const match = K_A === K_B;
+        const matchClass = match ? "hm-match" : "hm-mismatch";
+        const matchText  = match
+            ? `✅  KHỚP: K<sub>A</sub> = K<sub>B</sub> = ${K_A}`
+            : `❌  KHÔNG KHỚP!  K<sub>A</sub>=${K_A},  K<sub>B</sub>=${K_B}`;
+
+        hmFormulaBlock.innerHTML = `
+<span class="hm-line"><span class="hm-label">Alice tính K<sub>A</sub>:</span></span>
+<span class="hm-line">  K<sub>A</sub> = (Y<sub>B</sub>)<sup>X<sub>A</sub></sup> mod q</span>
+<span class="hm-line"><span class="hm-equal">     = (${state.B_pub})<sup>${state.a_priv}</sup> mod ${state.p}</span></span>
+<span class="hm-line"><span class="hm-equal">     = ${K_A}</span></span>
+<span class="hm-line"> </span>
+<span class="hm-line"><span class="hm-label">Bob tính K<sub>B</sub>:</span></span>
+<span class="hm-line">  K<sub>B</sub> = (Y<sub>A</sub>)<sup>X<sub>B</sub></sup> mod q</span>
+<span class="hm-line"><span class="hm-equal">     = (${state.A_pub})<sup>${state.b_priv}</sup> mod ${state.p}</span></span>
+<span class="hm-line"><span class="hm-equal">     = ${K_B}</span></span>
+<span class="hm-line"> </span>
+<span class="hm-line ${matchClass}">${matchText}</span>`;
+
+        // Advance to step 3
+        hmStep2Panel.classList.add("hidden");
+        hmStep3Panel.classList.remove("hidden");
+        updateDebugDump();
+    }
+
+    function runHmStep3() {
+        const K_A = modPow(state.B_pub, state.a_priv, state.p);
+        const K_B = modPow(state.A_pub, state.b_priv, state.p);
+
+        if (K_A !== K_B) {
+            addLog("SYSTEM", "❌ Khóa không khớp! Vui lòng kiểm tra lại giá trị nhập.");
+            return;
+        }
+
+        state.sharedSecret = K_A;
+        valK.value = K_A.toString();
+        setParamBoxState(boxK, "active");
+
+        addLog("PUB_KEY",    `✅ K<sub>A</sub> = K<sub>B</sub> = ${K_A} — Khóa chung khớp hoàn toàn.`);
+        addLog("CONNECTION", `Kênh bảo mật được thiết lập. Bắt đầu chat...`);
+
+        // Transition to chat screen
+        tunnelScreen.classList.add("hidden");
+        chatScreen.classList.remove("hidden");
+
+        channelHeader.style.backgroundColor = "var(--success-bg)";
+        channelHeaderText.innerText = `Kênh Bảo Mật: Alice \u2194 Bob  [K = ${K_A}]`;
+        channelHeaderText.style.color = "var(--success-text)";
+
+        chatInput.disabled = false;
+        sendBtn.disabled = false;
+
+        connectionStatus.classList.remove("disconnected", "connecting");
+        connectionStatus.classList.add("connected");
+        connectionStatus.querySelector(".status-text").innerText = "CONNECTED";
+
+        appendSystemMessage(`✅ Shared Secret K = ${K_A}  |  Channel encrypted.`);
+        startDecryptSimulator();
+        updateDebugDump();
+
+        setTimeout(() => {
+            appendChatBubble("Bob", `Y<sub>A</sub> = ${state.A_pub}, K<sub>B</sub> = ${K_A} — khóa khớp rồi Alice!`, "hm00demo01");
+            state.packetCounter++;
+            addInterceptedPacketUI(state.packetCounter, "Bob", "Alice", "CIPHERTEXT", `PAYLOAD: 0x[encrypted_cbc]... (IV: hm00demo01)`, "Encrypted - Key Unknown");
+        }, 800);
+    }
+
     // === RELAY MODE LOGIC (SOCKET.IO) ===
+
     function initSocket() {
         if (socket) return;
         
@@ -771,7 +919,17 @@ Shared Secret = ${state.sharedSecret ? "0x" + state.sharedSecret.toString(16).sl
         simStep1Btn.disabled = false;
         simStep2Btn.disabled = true;
         simStep3Btn.disabled = true;
-        
+
+        // Reset hand-made panels
+        hmStep1Panel.classList.remove("hidden");
+        hmStep2Panel.classList.add("hidden");
+        hmStep3Panel.classList.add("hidden");
+        if (hmFormulaBlock) hmFormulaBlock.innerHTML = "";
+        if (hmInputQ)     { hmInputQ.value = "";     hmInputQ.classList.remove("error"); }
+        if (hmInputAlpha) { hmInputAlpha.value = ""; hmInputAlpha.classList.remove("error"); }
+        if (hmInputXA)    { hmInputXA.value = "";    hmInputXA.classList.remove("error"); }
+        if (hmInputXB)    { hmInputXB.value = "";    hmInputXB.classList.remove("error"); }
+
         stopDecryptSimulator();
         decryptAttempts.innerText = "0";
         decryptProb.innerText = "< 0.000001%";
@@ -789,11 +947,21 @@ Shared Secret = ${state.sharedSecret ? "0x" + state.sharedSecret.toString(16).sl
         if (mode === "simulation") {
             roleSelectGroup.classList.add("hidden");
             simStepsContainer.classList.remove("hidden");
+            handmadeContainer.classList.add("hidden");
             disconnectSocket();
             connectionStatus.classList.remove("connected", "connecting");
             connectionStatus.classList.add("disconnected");
             connectionStatus.querySelector(".status-text").innerText = "CHƯA KẾT NỐI";
             connectBtn.innerText = "Kết nối";
+        } else if (mode === "handmade") {
+            roleSelectGroup.classList.add("hidden");
+            simStepsContainer.classList.add("hidden");
+            handmadeContainer.classList.remove("hidden");
+            disconnectSocket();
+            connectionStatus.classList.remove("connected", "connecting");
+            connectionStatus.classList.add("disconnected");
+            connectionStatus.querySelector(".status-text").innerText = "HAND-MADE MODE";
+            connectBtn.innerText = "Reset";
         } else {
             roleSelectGroup.classList.remove("hidden");
             simStepsContainer.classList.add("hidden");
@@ -811,14 +979,14 @@ Shared Secret = ${state.sharedSecret ? "0x" + state.sharedSecret.toString(16).sl
     // Connect trigger
     connectBtn.addEventListener("click", () => {
         if (mode === "simulation") {
-            // Simulator connection is run manually via step buttons, 
-            // but we can auto-trigger the steps as a helper
             resetLocalState();
             runSimStep1();
             setTimeout(runSimStep2, 1000);
             setTimeout(runSimStep3, 2000);
+        } else if (mode === "handmade") {
+            resetLocalState();
+            addLog("SYSTEM", "Hand-Made reset. Nhập lại q, α, Xₐ để bắt đầu.");
         } else {
-            // Relay mode connection
             if (isConnected) {
                 disconnectSocket();
                 connectBtn.innerText = "Kết nối";
@@ -833,15 +1001,12 @@ Shared Secret = ${state.sharedSecret ? "0x" + state.sharedSecret.toString(16).sl
         }
     });
 
-    // Reset session trigger
     resetBtn.addEventListener("click", () => {
-        if (mode === "simulation") {
-            resetLocalState();
-            addLog("SYSTEM", "Mô phỏng được cài đặt lại.");
+        if (mode === "relay") {
+            if (socket) socket.emit("reset");
         } else {
-            if (socket) {
-                socket.emit("reset");
-            }
+            resetLocalState();
+            addLog("SYSTEM", mode === "handmade" ? "Hand-Made Mode được đặt lại." : "Mô phỏng được đặt lại.");
         }
     });
 
@@ -850,21 +1015,29 @@ Shared Secret = ${state.sharedSecret ? "0x" + state.sharedSecret.toString(16).sl
     simStep2Btn.addEventListener("click", runSimStep2);
     simStep3Btn.addEventListener("click", runSimStep3);
 
+    // Hand-Made step triggers
+    hmStep1Btn.addEventListener("click", runHmStep1);
+    hmStep2Btn.addEventListener("click", runHmStep2);
+    hmStep3Btn.addEventListener("click", runHmStep3);
+    // Allow Enter key in HM inputs to advance
+    hmInputXA.addEventListener("keypress", (e) => { if (e.key === "Enter") runHmStep1(); });
+    hmInputXB.addEventListener("keypress", (e) => { if (e.key === "Enter") runHmStep2(); });
+
     // Chat Message submit triggers
     sendBtn.addEventListener("click", () => {
-        if (mode === "simulation") {
-            handleLocalSend();
-        } else {
+        if (mode === "relay") {
             handleRelaySend();
+        } else {
+            handleLocalSend();
         }
     });
 
     chatInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") {
-            if (mode === "simulation") {
-                handleLocalSend();
-            } else {
+            if (mode === "relay") {
                 handleRelaySend();
+            } else {
+                handleLocalSend();
             }
         }
     });
@@ -950,6 +1123,12 @@ Shared Secret = ${state.sharedSecret ? "0x" + state.sharedSecret.toString(16).sl
     });
 
     // === INITIALIZATION ===
+    // Start in Hand-Made mode
     resetLocalState();
-    addLog("SYSTEM", "Mô phỏng đã được tải. Chọn vai trò hoặc bấm nút để bắt đầu.");
+    simStepsContainer.classList.add("hidden");
+    handmadeContainer.classList.remove("hidden");
+    connectionStatus.querySelector(".status-text").innerText = "HAND-MADE MODE";
+    connectBtn.innerText = "Reset";
+    addLog("SYSTEM", "✍️ Hand-Made Mode: Nhập q, α, Xₐ để bắt đầu trao đổi khóa Diffie-Hellman.");
+    addLog("DH_PARAMS", "Gợi ý: q=23, α=5, X<sub>A</sub>=6, X<sub>B</sub>=15 → Y<sub>A</sub>=8, Y<sub>B</sub>=19, K=2");
 });

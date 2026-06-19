@@ -7,7 +7,6 @@ Dự án này là một **ứng dụng hoàn chỉnh về trao đổi khóa bả
 ### Tính Năng Chính:
 - ✅ Triển khai đầy đủ thuật toán Diffie-Hellman
 - ✅ Mô phỏng giao tiếp giữa Alice và Bob (local)
-- ✅ Client–server relay qua TCP socket thật
 - ✅ Giao diện Web mô phỏng trực quan & chat real-time (`web_app.py`)
 - ✅ Hỗ trợ trao đổi khóa đến 4096 bit
 - ✅ Mã hóa thông điệp (AES-256 / Fernet)
@@ -22,8 +21,6 @@ Dự án này là một **ứng dụng hoàn chỉnh về trao đổi khóa bả
 ```
 DIffie-Hellman/
 ├── diffie_hellman.py            # Lõi DH + Alice/Bob + demo local
-├── relay_server.py              # Relay server (chạy trên máy host)
-├── dh_client.py                 # Client CLI (Alice/Bob)
 ├── web_app.py                   # Web App Flask + SocketIO (Demo trực quan)
 ├── app_config.py                # Đọc config.json
 ├── config.json                  # server_host, bind_host, port...
@@ -32,6 +29,7 @@ DIffie-Hellman/
 ├── requirements.txt             # Python dependencies
 ├── README.md                    # Hướng dẫn chi tiết
 ├── QUICKSTART.md                # Bắt đầu nhanh
+├── DEMO_GUIDE.md                # Kịch bản demo báo cáo
 ├── DH_Project_Guide.md          # Hướng dẫn xây dựng dự án
 ├── TIMELINE_CHECKLIST.md        # Timeline 4 tuần
 ├── templates/
@@ -115,71 +113,7 @@ python3 advanced_examples.py
 - 🔐 Mã hóa thông điệp với khóa chung
 - 🛡️ Cách phòng chống MITM
 
-### 5. Chạy Mô Hình Client-Server Relay
-
-Mô hình này dùng một **relay server** làm "bưu tá". Server chỉ chuyển tiếp `p`, `g`, public key và ciphertext. Server **không** tính, **không** biết, và **không** lưu shared secret.
-
-#### Kiến trúc
-
-```
-Máy host (bạn)          Máy client (người dùng)
-relay_server.py    ◄── TCP ──►  dh_client.py (Alice)
-                         ◄── TCP ──►  dh_client.py (Bob)
-```
-
-- **Host**: chỉ chạy `relay_server.py` một lần.
-- **Client**: chỉ chạy `dh_client.py`, không cần start server.
-
-#### Cấu hình `config.json`
-
-```json
-{
-  "server_host": "127.0.0.1",
-  "server_port": 5001,
-  "bind_host": "0.0.0.0",
-  "timeout": 60.0,
-  "bit_length": 256
-}
-```
-
-| Key | Dùng cho | Ý nghĩa |
-|-----|----------|---------|
-| `server_host` | Client (CLI) | Địa chỉ server để kết nối |
-| `server_port` | Cả hai | Port TCP |
-| `bind_host` | Server | `0.0.0.0` = lắng nghe mọi interface trên máy host |
-
-**Test trên 1 máy:** giữ `server_host: "127.0.0.1"` — vẫn dùng TCP socket thật qua loopback.
-
-**Test trên nhiều máy:** đặt `server_host` thành IP máy chạy server (ví dụ `192.168.1.100`) trên **mỗi máy client**.
-
-#### Chạy bằng CLI
-
-Mở 3 terminal trên máy host (hoặc server riêng + 2 client):
-
-```bash
-# Terminal 1: relay server (máy host)
-python relay_server.py
-```
-
-```bash
-# Terminal 2: Alice
-python dh_client.py alice
-```
-
-```bash
-# Terminal 3: Bob
-python dh_client.py bob
-```
-
-Luồng hoạt động:
-1. Alice gửi `p`, `g`, `A = g^a mod p` lên server.
-2. Server chuyển tiếp các giá trị công khai đó cho Bob.
-3. Bob gửi `B = g^b mod p` lên server.
-4. Server chuyển tiếp `B` cho Alice.
-5. Alice tính `K = B^a mod p`, Bob tính `K = A^b mod p`.
-6. Hai bên in cùng fingerprint; server chỉ thấy public values/ciphertext.
-
-### 6. Chạy Giao Diện Web (Flask & Socket.IO)
+### 5. Chạy Giao Diện Web (Flask & Socket.IO)
 
 Ứng dụng web cung cấp một giao diện mô phỏng trực quan, sinh động luồng trao đổi khóa và cho phép chat mã hóa hai chiều với các biểu đồ về Entropy dữ liệu, danh sách gói tin bị Eve chặn đứng (intercepted packets) và nhật ký chi tiết.
 
@@ -300,24 +234,9 @@ result = simulate_mitm_attack()
 # In ra chi tiết tấn công MITM của Eve
 ```
 
-### Module 3: Relay (mạng TCP CLI)
+Cấu hình trong `config.json` — xem mục **5. Chạy Giao Diện Web**.
 
-**Chạy server (máy host):**
-
-```bash
-python relay_server.py
-```
-
-**Client CLI:**
-
-```bash
-python dh_client.py alice
-python dh_client.py bob
-```
-
-Cấu hình trong `config.json` — xem mục **5. Chạy Mô Hình Client-Server Relay**.
-
-### Module 4: web_app.py (Web App Flask + SocketIO)
+### Module 3: web_app.py (Web App Flask + SocketIO)
 
 Khởi chạy ứng dụng web phục vụ việc mô phỏng trực quan và thực hành:
 ```bash
@@ -327,7 +246,7 @@ python web_app.py
 *   `add_intercepted_packet()`: Gửi gói tin thu thập được lên giao diện của Eve.
 *   `handle_chat_message()`: Trung chuyển các thông điệp đã mã hóa cùng vector khởi tạo (IV).
 
-### Module 5: test_diffie_hellman.py
+### Module 4: test_diffie_hellman.py
 
 **Chạy test cụ thể:**
 
@@ -498,9 +417,8 @@ for session in sessions:
 
 5. **Web Interface**
    ```python
-   # Flask/Django web app
-   # Real-time visualization
-   # Interactive demo
+   # Flask/SocketIO Web App đã tích hợp sẵn (web_app.py)
+   # Real-time visualization & chat
    ```
 
 ---
@@ -511,8 +429,7 @@ for session in sessions:
 
 | Lỗi | Nguyên Nhân | Giải Pháp |
 |-----|-----------|----------|
-| `Connect failed` | Server chưa chạy hoặc sai `server_host` | Chạy `relay_server.py`; kiểm tra IP/port/firewall |
-| `Timeout` | Bit length quá lớn hoặc server không phản hồi | Giảm bit_length; tăng `timeout` trong config |
+| `Timeout` | Bit length quá lớn | Giảm bit_length trong config |
 | `K(Alice) ≠ K(Bob)` | Tham số p,g khác nhau | Chia sẻ cùng p,g |
 | `ValueError: Invalid key` | Khóa bí mật ngoài [2,p-2] | Check generate_private_key() |
 | `ImportError` | Thiếu cryptography / flask / flask-socketio | `pip install -r requirements.txt` |

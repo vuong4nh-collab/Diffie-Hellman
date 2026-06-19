@@ -29,8 +29,9 @@
                 <div class="control-group mode-toggle-group">
                     <label for="modeSelect">Chế độ:</label>
                     <select id="modeSelect">
-                        <option value="simulation" selected>(Khuyên dùng) Mô phỏng Tại chỗ (1 Màn hình)</option>
-                        <option value="relay">Kết nối Mạng (Nhiều Tab)</option>
+                        <option value="handmade">✍️ Hand-Made (Tự nhập khóa)</option>
+                        <option value="simulation">⚡ Mô phỏng Tự động (1 Màn hình)</option>
+                        <option value="relay">🌐 Kết nối Mạng (Nhiều Tab)</option>
                     </select>
                 </div>
                 
@@ -67,42 +68,42 @@
                 <div class="params-container">
                     <div class="param-box" id="box-p">
                         <div class="param-label">
-                            <span>p (Prime)</span>
+                            <span>q (Số nguyên tố / Prime)</span>
                             <span class="param-status-icon"></span>
                         </div>
-                        <textarea id="param-p-val" readonly placeholder="Đang tạo số nguyên tố p..."></textarea>
+                        <textarea id="param-p-val" readonly placeholder="Đang tạo số nguyên tố q..."></textarea>
                     </div>
 
                     <div class="param-box" id="box-g">
                         <div class="param-label">
-                            <span>g (Generator)</span>
+                            <span>α (Primitive Root / Generator)</span>
                             <span class="param-status-icon"></span>
                         </div>
-                        <input type="text" id="param-g-val" readonly placeholder="Căn nguyên thủy g">
+                        <input type="text" id="param-g-val" readonly placeholder="Căn nguyên thủy α">
                     </div>
 
                     <div class="param-box" id="box-A">
                         <div class="param-label">
-                            <span>A (Alice Public Key)</span>
+                            <span>Y<sub>A</sub> = α<sup>X<sub>A</sub></sup> mod q (Alice Public Key)</span>
                             <span class="param-status-icon"></span>
                         </div>
-                        <textarea id="param-A-val" readonly placeholder="A = g^a mod p"></textarea>
+                        <textarea id="param-A-val" readonly placeholder="Y_A = α^X_A mod q"></textarea>
                     </div>
 
                     <div class="param-box" id="box-B">
                         <div class="param-label">
-                            <span>B (Bob Public Key)</span>
+                            <span>Y<sub>B</sub> = α<sup>X<sub>B</sub></sup> mod q (Bob Public Key)</span>
                             <span class="param-status-icon"></span>
                         </div>
-                        <textarea id="param-B-val" readonly placeholder="B = g^b mod p"></textarea>
+                        <textarea id="param-B-val" readonly placeholder="Y_B = α^X_B mod q"></textarea>
                     </div>
 
                     <div class="param-box" id="box-K">
                         <div class="param-label">
-                            <span>K_aes (Shared Secret Key)</span>
+                            <span>K<sub>A</sub> = K<sub>B</sub> (Shared Secret Key)</span>
                             <span class="param-status-icon"></span>
                         </div>
-                        <textarea id="param-K-val" class="encrypted-font" readonly placeholder="K = B^a = A^b mod p"></textarea>
+                        <textarea id="param-K-val" class="encrypted-font" readonly placeholder="K_A = (Y_B)^X_A mod q"></textarea>
                     </div>
                 </div>
 
@@ -149,9 +150,59 @@
                         
                         <!-- Mini simulation control panel (Only visible in Sim Mode) -->
                         <div class="sim-steps-container" id="simStepsContainer">
-                            <button id="simStep1Btn" class="btn btn-primary">Bước 1: Tạo Params (p, g) và Khóa A</button>
-                            <button id="simStep2Btn" class="btn btn-primary" disabled>Bước 2: Phản hồi Khóa B</button>
-                            <button id="simStep3Btn" class="btn btn-success" disabled>Bước 3: Thiết lập Khóa Chung</button>
+                            <button id="simStep1Btn" class="btn btn-primary">Bước 1: Tạo Params (q, α) và Khóa Y<sub>A</sub></button>
+                            <button id="simStep2Btn" class="btn btn-primary" disabled>Bước 2: Phản hồi Khóa Y<sub>B</sub></button>
+                            <button id="simStep3Btn" class="btn btn-success" disabled>Bước 3: Thiết lập Khóa Chung K</button>
+                        </div>
+
+                        <!-- Hand-Made mode panel -->
+                        <div class="handmade-container" id="handmadeContainer">
+                            <div class="handmade-step" id="hmStep1Panel">
+                                <h4 class="hm-step-title">🔐 Bước 1: Thông số công khai + Khóa bí mật Alice</h4>
+                                <div class="hm-formula-hint">
+                                    2 bên cùng sử dụng công khai: <strong>q</strong> (số nguyên tố), <strong>α</strong> (primitive root của q)
+                                </div>
+                                <div class="hm-inputs">
+                                    <div class="hm-field">
+                                        <label>q (số nguyên tố)</label>
+                                        <input type="number" id="hmInputQ" placeholder="VD: 23" min="3">
+                                    </div>
+                                    <div class="hm-field">
+                                        <label>α (primitive root của q)</label>
+                                        <input type="number" id="hmInputAlpha" placeholder="VD: 5" min="2">
+                                    </div>
+                                    <div class="hm-field">
+                                        <label>X<sub>A</sub> (khóa bí mật Alice, X<sub>A</sub> &lt; q)</label>
+                                        <input type="number" id="hmInputXA" placeholder="VD: 6" min="2">
+                                    </div>
+                                </div>
+                                <div class="hm-formula-hint">Alice tính: <strong>Y<sub>A</sub> = α<sup>X<sub>A</sub></sup> mod q</strong></div>
+                                <button id="hmStep1Btn" class="btn btn-primary hm-btn">⇨ Tính Y<sub>A</sub> và gửi cho Bob</button>
+                            </div>
+
+                            <div class="handmade-step hidden" id="hmStep2Panel">
+                                <h4 class="hm-step-title">🔑 Bước 2: Khóa bí mật Bob</h4>
+                                <div class="hm-formula-hint">
+                                    Bob đã nhận được Y<sub>A</sub> từ Alice (qua kênh công khai).
+                                </div>
+                                <div class="hm-inputs">
+                                    <div class="hm-field">
+                                        <label>X<sub>B</sub> (khóa bí mật Bob, X<sub>B</sub> &lt; q)</label>
+                                        <input type="number" id="hmInputXB" placeholder="VD: 15" min="2">
+                                    </div>
+                                </div>
+                                <div class="hm-formula-hint">Bob tính: <strong>Y<sub>B</sub> = α<sup>X<sub>B</sub></sup> mod q</strong></div>
+                                <button id="hmStep2Btn" class="btn btn-primary hm-btn">⇨ Tính Y<sub>B</sub> và gửi cho Alice</button>
+                            </div>
+
+                            <div class="handmade-step hidden" id="hmStep3Panel">
+                                <h4 class="hm-step-title">🔒 Bước 3: Tính Khóa Chung</h4>
+                                <div class="hm-formula-hint">
+                                    Mỗi bên dùng khóa công khai của đối phương và khóa bí mật của mình.
+                                </div>
+                                <div class="hm-formula-block" id="hmFormulaBlock"></div>
+                                <button id="hmStep3Btn" class="btn btn-success hm-btn">⇨ Xác nhận K<sub>A</sub> = K<sub>B</sub> và mở kênh chat</button>
+                            </div>
                         </div>
                     </div>
 

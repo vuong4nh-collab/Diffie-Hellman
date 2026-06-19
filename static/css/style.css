@@ -1035,3 +1035,163 @@ body {
 .sidebar-right ::-webkit-scrollbar-thumb {
     background: #2d3139;
 }
+
+/* ===== HAND-MADE MODE ===== */
+.handmade-container {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    width: 360px;
+    max-height: 420px;
+    overflow-y: auto;
+}
+
+.handmade-step {
+    background-color: #ffffff;
+    border: var(--brutal-border);
+    border-radius: 6px;
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
+    box-shadow: var(--brutal-shadow-sm);
+    animation: fadeInUp 0.25s ease;
+}
+
+@keyframes fadeInUp {
+    from { opacity: 0; transform: translateY(8px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+
+.hm-step-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 0.88rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 0.4rem;
+}
+
+.hm-formula-hint {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    background-color: var(--bg-main);
+    border-left: 3px solid var(--primary-color);
+    padding: 0.35rem 0.6rem;
+    border-radius: 0 4px 4px 0;
+    font-family: 'Fira Code', monospace;
+}
+
+.hm-formula-hint strong {
+    color: var(--primary-color);
+}
+
+.hm-inputs {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.hm-field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
+.hm-field label {
+    font-size: 0.7rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+    letter-spacing: 0.2px;
+}
+
+.hm-field input {
+    padding: 0.4rem 0.6rem;
+    font-size: 0.85rem;
+    font-family: 'Fira Code', monospace;
+    border: var(--brutal-border);
+    border-radius: 4px;
+    background-color: #ffffff;
+    outline: none;
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    width: 100%;
+}
+
+.hm-field input:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 2px rgba(79, 70, 229, 0.15);
+}
+
+.hm-field input.error {
+    border-color: var(--danger-color);
+    background-color: var(--danger-bg);
+}
+
+.hm-btn {
+    align-self: stretch;
+    margin-top: 0.25rem;
+    font-size: 0.8rem;
+}
+
+/* Formula result block shown in step 3 */
+.hm-formula-block {
+    background-color: #0d0e12;
+    border: var(--brutal-border);
+    border-radius: 4px;
+    padding: 0.75rem;
+    font-family: 'Fira Code', monospace;
+    font-size: 0.72rem;
+    color: #00ff66;
+    line-height: 1.7;
+}
+
+.hm-formula-block .hm-line {
+    display: block;
+    margin-bottom: 0.15rem;
+    word-break: break-all;
+}
+
+.hm-formula-block .hm-label {
+    color: #ffcc00;
+    font-weight: bold;
+}
+
+.hm-formula-block .hm-equal {
+    color: #ffffff;
+}
+
+.hm-formula-block .hm-match {
+    color: #00ff66;
+    font-weight: bold;
+}
+
+.hm-formula-block .hm-mismatch {
+    color: #ff3333;
+    font-weight: bold;
+}
+
+.hm-error-msg {
+    font-size: 0.72rem;
+    color: #b91c1c;
+    background-color: var(--danger-bg);
+    border: 1px solid var(--danger-color);
+    padding: 0.3rem 0.5rem;
+    border-radius: 4px;
+    display: none;
+}
+
+/* Normalise and style sub/sup tags for key formulas */
+sub, sup {
+    font-size: 75%;
+    line-height: 0;
+    position: relative;
+    vertical-align: baseline;
+}
+
+sub {
+    bottom: -0.2em;
+}
+
+sup {
+    top: -0.35em;
+}
