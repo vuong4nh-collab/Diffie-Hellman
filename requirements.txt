@@ -1,3 +1,5 @@
 cryptography>=38.0.0
 pytest>=7.0.0
 coverage>=6.0.0
+flask>=2.0.0
+flask-socketio>=5.0.0

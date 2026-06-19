@@ -5,6 +5,7 @@ from flask import Flask, render_template, jsonify, request
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from diffie_hellman import DiffieHellman, DH_Parameters
 from advanced_examples import EncryptedMessenger
+from app_config import load_config, get_bind_host, get_server_port
 
 # Set up logging
 logging.basicConfig(level=logging.INFO)
@@ -214,6 +215,8 @@ if __name__ == "__main__":
     os.makedirs("static/css", exist_ok=True)
     os.makedirs("static/js", exist_ok=True)
     
-    port = 5000
+    _cfg = load_config()
+    host = get_bind_host(_cfg)
+    port = get_server_port(_cfg)
     logger.info(f"Starting Diffie-Hellman web app on http://localhost:{port}")
-    socketio.run(app, host="0.0.0.0", port=port, debug=True)
+    socketio.run(app, host=host, port=port, debug=True)
